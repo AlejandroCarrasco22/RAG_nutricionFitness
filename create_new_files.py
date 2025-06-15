@@ -4,11 +4,14 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from pathlib import Path
 import re
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import chromadb
 
 
 class create_new_files:
     """
-    Clase para añadir archivos a la base de datos de vectores.
+        Extrae o genera resúmenes (abstracts) de PDFs con dos lógicas:
+        1. Si no hay abstract, lo genera desde cero de forma exhaustiva.
+        2. Si hay un abstract, lo enriquece con información clave del texto completo.
     """
 
     def generate_from_azure_openai(self, prompt: str, llm_instance) -> str:
@@ -31,18 +34,48 @@ class create_new_files:
         """
         abstract_docs = []
         
-        # Un prompt de alta calidad para la tarea de resumir
-        summarization_prompt_template = """
-        Eres un asistente experto en la síntesis de documentos técnicos y académicos.
-        A continuación, te proporciono el texto de un documento. Tu tarea es generar un
-        resumen conciso (un 'abstract') en español, de no más de 250 palabras.
+        # --- PROMPT 1: Para generar un abstract desde cero ---
+        generation_prompt_template = """
+        Eres un asistente de investigación experto en la síntesis de documentos técnicos y académicos.
+        Tu tarea es generar un resumen exhaustivo y bien estructurado (un 'abstract') del siguiente documento.
 
-        El resumen debe capturar las ideas principales, la metodología (si la hay) y
-        las conclusiones clave del texto. Los que hablen de suplementación añade en el resumen toda 
-        la suplementación de la que se hable. Debe ser denso en información y estar
-        escrito en un estilo formal y objetivo.
+        Para ello, sigue estas instrucciones rigurosamente:
+        1.  **Objetivo Principal:** Identifica y expón claramente el propósito central del estudio o documento.
+        2.  **Puntos Clave:** Extrae y lista TODOS los temas o argumentos importantes tratados.
+        3.  **Entidades Específicas (¡Muy Importante!):** Enumera de forma explícita y completa todos los siguientes elementos mencionados en el texto:
+            - **Suplementos:** Todos los suplementos mencionados (e.g., Creatina, Proteína Whey, Omega-3, HMB, etc.).
+            - **Tipos de Ejercicio:** Todas las modalidades de entrenamiento (e.g., entrenamiento de fuerza, HIIT, carrera de resistencia).
+            - **Alimentos o Dietas:** Cualquier dieta o tipo de alimento relevante (e.g., dieta mediterránea, ayuno intermitente, dieta vegetariana).
+            - **Población Objetivo:** El grupo de personas al que se dirige el estudio (e.g., atletas de élite, adultos mayores, adolescentes).
+        4.  **Conclusiones:** Resume los hallazgos o conclusiones principales del documento.
+
+        El resumen final debe ser denso en información, objetivo y escrito en un estilo formal.
 
         Texto del documento:
+        ---
+        {document_text}
+        ---
+        """
+        
+        # --- PROMPT 2: Para enriquecer un abstract existente ---
+        enhancement_prompt_template = """
+        Eres un asistente de investigación experto que mejora y enriquece resúmenes existentes.
+        A continuación, te proporciono un 'Resumen Original' y el 'Texto Completo' de un documento.
+
+        Tu tarea es la siguiente:
+        1.  Lee el 'Texto Completo' y compáralo con el 'Resumen Original'.
+        2.  Identifica la información clave que NO está presente en el 'Resumen Original'. Enfócate especialmente en encontrar:
+            - **Suplementos:** (e.g., Creatina, Proteína Whey).
+            - **Tipos de Ejercicio o Entrenamiento.**
+            - **Población Objetivo:** (e.g., atletas, personas mayores).
+        3.  Genera un 'Resumen Mejorado' que combine la información del 'Resumen Original' con los puntos clave que has encontrado. El resultado final debe ser un único párrafo coherente y fluido, que mantenga el estilo del original pero que sea más completo. No añadas encabezados como "Resumen Mejorado".
+
+        Resumen Original:
+        ---
+        {original_abstract}
+        ---
+
+        Texto Completo:
         ---
         {document_text}
         ---
@@ -58,18 +91,29 @@ class create_new_files:
                 # 1. INTENTAR EXTRAER EL ABSTRACT EXISTENTE
                 start_match = re.search(r'(Abstract|Resumen)\b', full_text, re.IGNORECASE)
                 abstract_text = ""
+                
+                # Preparamos el texto truncado para pasarlo a los prompts
+                max_chars = 100000 
+                truncated_text = full_text[:max_chars]
 
                 if start_match:
                     start_index = start_match.end()
                     end_match = re.search(r'\b(Introduction|Introducción|Keywords|Palabras clave)\b', full_text[start_index:], re.IGNORECASE)
-                    if end_match:
-                        end_index = start_index + end_match.start()
-                        abstract_text = full_text[start_index:end_index].strip()
+                    original_abstract = full_text[start_index:end_match.start() if end_match else start_index+2500].strip()
+                    # Preparamos y ejecutamos el prompt de mejora
+                    prompt_para_mejorar = enhancement_prompt_template.format(
+                        original_abstract=original_abstract,
+                        document_text=truncated_text
+                    )
+                    final_abstract_text = self.generate_from_azure_openai(prompt_para_mejorar, llm_instance)
+                    
+                    if "ERROR_GENERACION" not in final_abstract_text:
+                        print("Abstract enriquecido con éxito.")
                     else:
-                        abstract_text = full_text[start_index:start_index+2500].strip()
+                        print(f"Fallo al enriquecer el abstract para {path.name}. Usando el original.")
+                        final_abstract_text = original_abstract # Usamos el original como fallback
 
-                # 2. SI NO SE EXTRAJO, GENERARLO
-                if not abstract_text or len(abstract_text) < 100: # Si es muy corto, probablemente no sea un buen abstract
+                else:
                     print(f"No se encontró abstract en '{path}'. Generando uno nuevo con Azure OpenAI...")
 
                     # gpt-4o-mini tiene 128k tokens
@@ -77,18 +121,14 @@ class create_new_files:
                     max_chars = 100000
                     truncated_text = full_text[:max_chars]
 
-                    prompt_para_resumir = summarization_prompt_template.format(document_text=truncated_text)
+                    prompt_para_generar = generation_prompt_template.format(document_text=truncated_text)
+                    final_abstract_text = self.generate_from_azure_openai(prompt_para_generar, llm_instance)
                     
-                    generated_abstract = self.generate_from_azure_openai(prompt_para_resumir, llm_instance)
-                    
-                    if "ERROR_GENERACION" not in generated_abstract:
-                        abstract_text = generated_abstract
+                    if "ERROR_GENERACION" not in final_abstract_text:
                         print("Abstract generado con éxito.")
                     else:
                         print(f"Fallo al generar abstract para {path}. Saltando documento.")
-                        continue # Saltamos al siguiente documento
-                else:
-                    print("Abstract extraído con éxito del documento.")
+                        continue
 
                 # 3. CREAR EL DOCUMENTO DE LANGCHAIN
                 doc = Document(
@@ -183,3 +223,11 @@ class create_new_files:
                 nuevos += 1
                 self.add_file_to_vectordb(path.as_posix(), embedding, llm, full_chroma_db_dir, abtracts_chorma_db_dir)
         print(f"Se cargaron {nuevos} nuevos documentos de PDFs.")
+
+if __name__ == "__main__":
+    
+    persistent_client = chromadb.PersistentClient(path="./chroma_db_dir")
+
+    newFile = create_new_files()
+    files = newFile.get_unique_sources_list(persistent_client)
+    print(len(files))
