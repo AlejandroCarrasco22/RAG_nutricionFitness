@@ -4,8 +4,6 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from pathlib import Path
 import re
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-import chromadb
-
 
 class create_new_files:
     """
@@ -223,11 +221,3 @@ class create_new_files:
                 nuevos += 1
                 self.add_file_to_vectordb(path.as_posix(), embedding, llm, full_chroma_db_dir, abtracts_chorma_db_dir)
         print(f"Se cargaron {nuevos} nuevos documentos de PDFs.")
-
-if __name__ == "__main__":
-    
-    persistent_client = chromadb.PersistentClient(path="./chroma_db_dir")
-
-    newFile = create_new_files()
-    files = newFile.get_unique_sources_list(persistent_client)
-    print(len(files))
