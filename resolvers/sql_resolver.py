@@ -1,11 +1,13 @@
 import sqlite3
 import pandas as pd
-from langchain.chains import LLMChain
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from fuzzywuzzy import process
+from keys import LLM
 
 class SQLResolver:
-    def __init__(self, llm, db_path="../comida.db"):
+    def __init__(self,
+                 llm = LLM,
+                 db_path="./comida.db"):
         self.llm = llm
         self.db_path = db_path
         self.unique_categories = self.get_unique_categories()
@@ -82,7 +84,7 @@ class SQLResolver:
         )
         human_prompt = HumanMessagePromptTemplate.from_template("""{contexto}\nPregunta: {pregunta}""")
         prompt = ChatPromptTemplate.from_messages([system_prompt, human_prompt])
-        return LLMChain(llm=self.llm, prompt=prompt)
+        return prompt | self.llm
 
     def _build_translator_chain(self):
         system_prompt = SystemMessagePromptTemplate.from_template(
@@ -90,11 +92,12 @@ class SQLResolver:
         )
         human_prompt = HumanMessagePromptTemplate.from_template("{term_spanish}")
         prompt = ChatPromptTemplate.from_messages([system_prompt, human_prompt])
-        return LLMChain(llm=self.llm, prompt=prompt)
+        return prompt | self.llm
     
-    def resolver_sql(self, pregunta: str):
+    def resolver(self, pregunta: str):
         pregunta_normalizada = pregunta.lower()
-        translated_phrase = self.translator_chain.run(term_spanish=pregunta).strip()
+        translated_response = self.translator_chain.invoke({"term_spanish": pregunta})
+        translated_phrase = translated_response.content.strip()
 
         is_specific_food_query = any(cat.lower() in translated_phrase.lower() for cat in self.unique_categories)
         
@@ -131,10 +134,10 @@ class SQLResolver:
         if matched_descs:
             contexto_pistas += f"El usuario podría referirse a alimentos como: {', '.join(matched_descs[:5])}. "
 
-        consulta_sql = self.sql_chain.run(
-            pregunta=pregunta,
-            contexto=contexto_pistas
-        ).strip()
+        consulta_sql = self.sql_chain.invoke({
+            "pregunta": pregunta,
+        "contexto": contexto_pistas
+        }).content.strip()
 
         consulta_sql = self._clean_sql(consulta_sql)
 

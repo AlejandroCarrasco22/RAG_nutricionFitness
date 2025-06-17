@@ -1,5 +1,4 @@
 from keys import LLM
-from langchain.chains import LLMChain
 from langchain_core.prompts import ChatPromptTemplate
 
 class RouterRagSql:
@@ -17,21 +16,20 @@ class RouterRagSql:
                 Pregunta: {pregunta}
                 """
         )
-        self.routing_chain = LLMChain(llm=self.llm, prompt=self.routing_prompt)
+        self.routing_chain = self.routing_prompt | self.llm
     
-    def router(self, pregunta, routing_chain):
+    def router(self, pregunta):
         try:
-            tipo = routing_chain.invoke({"pregunta": pregunta})["text"].strip().lower()
+            response = self.routing_chain.invoke({"pregunta": pregunta})
+            # El resultado ahora viene directamente en el contenido del mensaje
+            tipo = response.content.strip().lower()
+            print(f"Tipo de consulta inferido: {tipo}")
+            
+            if tipo == "sql":
+                return tipo
+            elif tipo == "rag":
+                return tipo
+            else:
+                return f"Ruta desconocida: '{tipo}'"
         except Exception as e:
             return f"Error al decidir la ruta: {e}"
-
-        print(f"Tipo de consulta inferido: {tipo}")
-
-        if tipo == "sql":
-            return tipo
-            #return resolver_sql(pregunta)
-        elif tipo == "rag":
-            return tipo
-            #return resolver_mongo(pregunta)
-        else:
-            return f"Ruta desconocida: '{tipo}'"
