@@ -73,5 +73,11 @@ class RAGResolver:
             rag_chain_full = create_retrieval_chain(retriever_full, chain)
             result = rag_chain_full.invoke({"input": pregunta})
 
-        return result
+        # Obtener los documentos recuperados
+        retrieved_docs = [doc.page_content for doc in retriever_full_filtered.get_relevant_documents(pregunta)]
+        
+        return {
+            "answer": result['answer'],
+            "retrieved_docs": retrieved_docs
+        }
 

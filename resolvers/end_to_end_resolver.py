@@ -2,6 +2,7 @@ from langchain_core.prompts import ChatPromptTemplate
 import pandas as pd
 from keys import LLM 
 from langchain.memory import ConversationBufferMemory
+from typing import Union, Dict, List, Any
 
 class EndToEndResolver:
     def __init__(self, router, sql_resolver, rag_resolver, llm = LLM, memory=None):
@@ -36,17 +37,24 @@ class EndToEndResolver:
         
         self.natural_response_chain = self.natural_response_prompt | self.llm
 
-    def _actualizar_memoria(self, pregunta, respuesta):
+    def _actualizar_memoria(self, pregunta: str, respuesta: str) -> None:
         # Añade el turno a la memoria
         self.memory.chat_memory.add_user_message(pregunta)
         self.memory.chat_memory.add_ai_message(respuesta)
 
-    def resolver(self, pregunta: str) -> str:
+    def resolver(self, pregunta: str) -> Union[str, Dict[str, Any]]:
         """
         Función principal que coordina todo el flujo de resolución:
         1. Enrutamiento (SQL vs RAG)
         2. Recuperación de información
         3. Generación de respuesta natural
+        
+        Returns:
+            Union[str, Dict[str, Any]]: Puede devolver:
+                - str: Respuesta directa para consultas SQL
+                - Dict[str, Any]: Para consultas RAG, contiene:
+                    - answer: str - La respuesta generada
+                    - retrieved_docs: List[str] - Documentos recuperados
         """
         try:
             # Paso 1: Enrutamiento
@@ -69,22 +77,32 @@ class EndToEndResolver:
                         "contexto": contexto,
                         "historial": historial
                     })
-                    self._actualizar_memoria(pregunta, respuesta_final.content.strip())
-                    return respuesta_final.content.strip()
+                    respuesta_texto = str(respuesta_final.content)
+                    self._actualizar_memoria(pregunta, respuesta_texto)
+                    return respuesta_texto
                 else:
                     # Si es un error u otro tipo de respuesta, devolverlo directamente
-                    self._actualizar_memoria(pregunta, str(datos))
-                    return str(datos)
+                    respuesta_texto = str(datos)
+                    self._actualizar_memoria(pregunta, respuesta_texto)
+                    return respuesta_texto
                     
             elif tipo == "rag":
                 # Para RAG, ya tenemos respuesta natural directamente
                 resultado = self.rag_resolver.resolver(pregunta)
-                respuesta = resultado["answer"]
+                respuesta = str(resultado["answer"])
+                documentos_recuperados = resultado.get("retrieved_docs", [])
                 self._actualizar_memoria(pregunta, respuesta)
-                return respuesta
+                return {
+                    "answer": respuesta,
+                    "retrieved_docs": documentos_recuperados
+                }
                 
             else:
-                return f"Error: Tipo de consulta no reconocido ({tipo})"
+                error_msg = f"Error: Tipo de consulta no reconocido ({tipo})"
+                self._actualizar_memoria(pregunta, error_msg)
+                return error_msg
                 
         except Exception as e:
-            return f"Error en el proceso de resolución: {str(e)}"
+            error_msg = f"Error en el proceso de resolución: {str(e)}"
+            self._actualizar_memoria(pregunta, error_msg)
+            return error_msg
