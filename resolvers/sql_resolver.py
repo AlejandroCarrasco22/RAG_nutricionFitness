@@ -3,13 +3,16 @@ import pandas as pd
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from fuzzywuzzy import process
 from keys import LLM
+from langchain.memory import ConversationBufferMemory
 
 class SQLResolver:
     def __init__(self,
                  llm = LLM,
-                 db_path="./comida.db"):
+                 db_path="./comida.db",
+                 memory=None):
         self.llm = llm
         self.db_path = db_path
+        self.memory = memory
         self.unique_categories = self.get_unique_categories()
         
         # Inicializa las chains

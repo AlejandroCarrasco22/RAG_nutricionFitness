@@ -4,17 +4,20 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_chroma import Chroma
 from pathlib import Path
 from keys import LLM, EMBBEDING, CHROMA_ABSTRACTS_DB_DIR, CHROMA_DB_DIR
+from langchain.memory import ConversationBufferMemory
 
 class RAGResolver:
     def __init__(self,
                  llm=LLM,
                  embedding=EMBBEDING, 
                  db_full_path=CHROMA_DB_DIR, 
-                 db_abstracts_path=CHROMA_ABSTRACTS_DB_DIR):
+                 db_abstracts_path=CHROMA_ABSTRACTS_DB_DIR,
+                 memory=None):
         self.llm = llm
         self.embedding = embedding
         self.db_full_path = Path(db_full_path).resolve()
         self.db_abstracts_path = Path(db_abstracts_path).resolve()
+        self.memory = memory
         self.prompt_template = ChatPromptTemplate.from_messages([
             ("system", """Tú eres un asistente experto en nutrición deportiva, suplementación y entrenamiento
             físico, diseñado para responder preguntas con la máxima precisión. Utiliza los siguientes fragmentos 
