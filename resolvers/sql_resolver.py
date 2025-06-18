@@ -146,9 +146,10 @@ class SQLResolver:
 
         try:
             with sqlite3.connect(self.db_path) as conn:
-                return pd.read_sql_query(consulta_sql, conn)
+                resultado = pd.read_sql_query(consulta_sql, conn)
+                return {"consulta": consulta_sql, "resultado": resultado.to_dict(orient="records")}
         except Exception as e:
-            return f"Error ejecutando la consulta:\n{e}"
+            return {"consulta": consulta_sql, "resultado": f"Error ejecutando la consulta:\n{e}"}
 
     def _clean_sql(self, consulta):
         if consulta.startswith("```sql"):

@@ -62,9 +62,12 @@ if __name__ == '__main__':
         try:
             respuesta = end_to_end_resolver.resolver(pregunta)
             print("\n--- Respuesta ---")
-            print(respuesta)
-            
+            if isinstance(respuesta, str):
+                print(respuesta)
+            elif isinstance(respuesta, dict):
+                print(respuesta.get("resultado", "No disponible"))
+            else:
+                print("Formato de respuesta no reconocido.")
         except Exception as e:
             print(f"\nError inesperado: {str(e)}")
             continue
-    

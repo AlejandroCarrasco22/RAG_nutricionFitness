@@ -55,11 +55,12 @@ class EndToEndResolver:
             # Paso 2: Recuperación según tipo
             if tipo == "sql":
                 resultado = self.sql_resolver.resolver(pregunta)
-                
-                # Convertir resultado SQL a contexto textual
-                if isinstance(resultado, pd.DataFrame):
-                    # Si es un DataFrame válido, convertir a markdown para mejor formato
-                    contexto = resultado.to_markdown(index=False)
+                consulta_sql = resultado.get("consulta", "")
+                datos = resultado.get("resultado", [])
+
+                if isinstance(datos, list):
+                    # Convertir resultado SQL a contexto textual
+                    contexto = pd.DataFrame(datos).to_markdown(index=False)
                     historial = self.memory.buffer if hasattr(self.memory, 'buffer') else ""
                     
                     # Paso 3: Generar respuesta natural para datos estructurados
@@ -68,11 +69,12 @@ class EndToEndResolver:
                         "contexto": contexto,
                         "historial": historial
                     })
+                    self._actualizar_memoria(pregunta, respuesta_final.content.strip())
                     return respuesta_final.content.strip()
                 else:
                     # Si es un error u otro tipo de respuesta, devolverlo directamente
-                    self._actualizar_memoria(pregunta, str(resultado))
-                    return str(resultado)
+                    self._actualizar_memoria(pregunta, str(datos))
+                    return str(datos)
                     
             elif tipo == "rag":
                 # Para RAG, ya tenemos respuesta natural directamente
