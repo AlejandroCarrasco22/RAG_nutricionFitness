@@ -1,5 +1,6 @@
 from langchain_chroma import Chroma
 import pandas as pd
+import time
 import chromadb
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -16,8 +17,7 @@ from langchain.memory import ConversationBufferMemory
 new_files = create_new_files()
 router = RouterRagSql()
 
-# Crear una instancia de memoria compartida
-shared_memory = ConversationBufferMemory(return_messages=True)
+shared_memory = ConversationBufferMemory()
 
 # Inicializar resolvers con la memoria compartida
 sql_resolver = SQLResolver(memory=shared_memory)
@@ -71,3 +71,45 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"\nError inesperado: {str(e)}")
             continue
+    # preguntas_creatina = [
+    #     "Respondeme las siguientes preguntas con respuestas breves, con sí o no vale en la mayoría de los cosas. Vamos a preguntar todo el rato respecto a la creatina. ¿Puede la creatina aumentar la fuerza muscular?", # Si
+    #     "¿Mejora la memoria?", # Si
+    #     "¿Es mala para las mujeres?", # No
+    #     "¿Fortalece los huesos?", # Si
+    #     "¿Daña los riñones?", # No
+    #     "¿Ayuda a ganar músculo?", # Si
+    #     "¿Se asocia con cancer de riñón?", # NO
+    #     "¿Reduce el azúcar en sangre?", # Si
+    #     "¿Baja el colesterol?", # Sí
+    #     "¿Produce caída del cabello?", # No
+    #     "¿Sobrecarga el hígado?", # No
+    #     "¿Ayuda con la depresión?", # Si
+    #     "¿Es antiinflamatoria?", # Si
+    #     "¿Disminuye la grasa corporal?", # Si
+    #     "¿Deshidrata el cuerpo?", # No
+    #     "¿Reduce el daño muscular por ejercicio?", # Si
+    #     "¿Reduce la pérdida muscular el envejecimiento?", # Si
+    #     "¿Mejora la resistencia?", # Si
+    #     "¿Reduce los sintomas como la lentitud mental?", # Si
+    #     "¿Es la creatina mejor en hombres que en mujeres?", # No
+    #     "¿Ayuda a recuperar más rápido del ejercicio?", # Si
+    #     "¿Son algunas formas de cratina mejores que otras?", # No o no de manera significativa
+    #     "¿Cúal es la mejor creatina que puedo tomar?", 
+    #     "¿Cuánta creatina tienes que tomar al día para conseguir todos estos beneficios?" # Entre 5 a 10 gr  
+    # ]
+    # for pregunta in preguntas_creatina:
+        
+    #     print(f"\n--------------Pregunta: {pregunta}------------------")
+    #     try:
+    #         respuesta = end_to_end_resolver.resolver(pregunta)
+    #         print("\n--- Respuesta ---")
+    #         if isinstance(respuesta, str):
+    #             print(respuesta)
+    #         elif isinstance(respuesta, dict):
+    #             print(respuesta.get("resultado", "No disponible"))
+    #         else:
+    #             print("Formato de respuesta no reconocido.")
+    #     except Exception as e:
+    #         print(f"\nError inesperado: {str(e)}")
+    #         continue
+    #     time.sleep(1)

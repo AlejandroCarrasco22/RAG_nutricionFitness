@@ -38,9 +38,8 @@ class EndToEndResolver:
         self.natural_response_chain = self.natural_response_prompt | self.llm
 
     def _actualizar_memoria(self, pregunta: str, respuesta: str) -> None:
-        # Añade el turno a la memoria
-        self.memory.chat_memory.add_user_message(pregunta)
-        self.memory.chat_memory.add_ai_message(respuesta)
+        # Usar la nueva API de memoria
+        self.memory.save_context({"input": pregunta}, {"output": respuesta})
 
     def resolver(self, pregunta: str) -> Union[str, Dict[str, Any]]:
         """
@@ -69,7 +68,8 @@ class EndToEndResolver:
                 if isinstance(datos, list):
                     # Convertir resultado SQL a contexto textual
                     contexto = pd.DataFrame(datos).to_markdown(index=False)
-                    historial = self.memory.buffer if hasattr(self.memory, 'buffer') else ""
+                    # Usar la nueva API para obtener el historial
+                    historial = self.memory.load_memory_variables({}).get("history", "")
                     
                     # Paso 3: Generar respuesta natural para datos estructurados
                     respuesta_final = self.natural_response_chain.invoke({
@@ -87,15 +87,12 @@ class EndToEndResolver:
                     return respuesta_texto
                     
             elif tipo == "rag":
-                # Para RAG, ya tenemos respuesta natural directamente
-                resultado = self.rag_resolver.resolver(pregunta)
-                respuesta = str(resultado["answer"])
-                documentos_recuperados = resultado.get("retrieved_docs", [])
+                # Para RAG, ahora pasamos el historial también
+                historial = self.memory.load_memory_variables({}).get("history", "")
+                resultado = self.rag_resolver.resolver(pregunta, historial=historial)
+                respuesta = str(resultado)
                 self._actualizar_memoria(pregunta, respuesta)
-                return {
-                    "answer": respuesta,
-                    "retrieved_docs": documentos_recuperados
-                }
+                return respuesta
                 
             else:
                 error_msg = f"Error: Tipo de consulta no reconocido ({tipo})"

@@ -26,7 +26,11 @@ class RAGResolver:
             máximo de cinco oraciones, asegurando que sea concisa y directamente relevante para el ámbito del 
             deporte y la salud.
 
-            {context}"""),
+            Historial de la conversación:
+            {historial}
+
+            {context}
+            """),
             ("human", "{input}"),
         ])
         self.negative_keywords = [
@@ -39,7 +43,7 @@ class RAGResolver:
             "no sé"
         ]
 
-    def resolver(self, pregunta: str):
+    def resolver(self, pregunta: str, historial: str = ""):
         """
         Responde una pregunta utilizando un RAG de dos pasos.
         """
@@ -65,19 +69,21 @@ class RAGResolver:
 
         chain = create_stuff_documents_chain(self.llm, self.prompt_template)
         rag_chain_filtered = create_retrieval_chain(retriever_full_filtered, chain)
-        result = rag_chain_filtered.invoke({"input": pregunta})
+        result = rag_chain_filtered.invoke({"input": pregunta, "historial": historial})
 
-        if any(k in result['answer'].lower() for k in self.negative_keywords):
-            print("PASO 3: Realizando búsqueda de respaldo en toda la base de datos...")
-            retriever_full = db_full.as_retriever(search_kwargs={"k": 10})
-            rag_chain_full = create_retrieval_chain(retriever_full, chain)
-            result = rag_chain_full.invoke({"input": pregunta})
+        if isinstance(result, dict) and "answer" in result:
+            if any(k in result['answer'].lower() for k in self.negative_keywords):
+                print("PASO 3: Realizando búsqueda de respaldo en toda la base de datos...")
+                retriever_full = db_full.as_retriever(search_kwargs={"k": 10})
+                rag_chain_full = create_retrieval_chain(retriever_full, chain)
+                result = rag_chain_full.invoke({"input": pregunta, "historial": historial})
 
-        # Obtener los documentos recuperados
-        retrieved_docs = [doc.page_content for doc in retriever_full_filtered.get_relevant_documents(pregunta)]
-        
-        return {
-            "answer": result['answer'],
-            "retrieved_docs": retrieved_docs
-        }
+                if isinstance(result, dict) and "answer" in result:
+                    return result.get('answer', "No disponible")
+                else:
+                    return "Error: Formato inesperado en la respuesta del RAG Chain durante la búsqueda de respaldo."
+
+            return result.get('answer', "No disponible")
+        else:
+            return "Error: Formato inesperado en la respuesta del RAG Chain."
 
