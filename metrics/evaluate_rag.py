@@ -31,7 +31,7 @@ questions = [
 resolver = RAGResolver()  # Asegúrate de que esté correctamente inicializado
 
 # Generar respuestas del sistema
-generated_answers = [resolver.resolver(q)["answer"] for q in questions]
+generated_answers = [resolver.resolver(q) for q in questions]
 
 # Mostrar respuestas
 for q, gen, ref in zip(questions, generated_answers, reference_answers):
