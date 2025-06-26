@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriBot - Tu Asistente de Nutrición y Fitness</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="status-indicator"></div>
+            <h1>🥗 NutriBot</h1>
+            <p>Tu asistente personal de nutrición y fitness</p>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-content">
+                    ¡Hola! Soy NutriBot, tu asistente especializado en nutrición, suplementación y fitness. 
+                    Puedo ayudarte con:
+                    <br><br>
+                    🍎 Composición nutricional de alimentos<br>
+                    💪 Información sobre suplementación deportiva<br>
+                    🏃‍♂️ Recomendaciones de nutrición deportiva<br>
+                    <br>
+                    ¿En qué puedo ayudarte hoy?
+                    <div class="message-time">Ahora</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="typing-dots">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+        
+        <div class="chat-input-container">
+            <div class="suggestions">
+                <button class="suggestion-btn" onclick="sendSuggestion('¿Qué beneficios tiene la creatina?')">Creatina</button>
+                <button class="suggestion-btn" onclick="sendSuggestion('¿Cuántas proteínas necesito al día?')">Proteínas</button>
+                <button class="suggestion-btn" onclick="sendSuggestion('¿Qué comer antes del entrenamiento?')">Pre-entrenamiento</button>
+                <button class="suggestion-btn" onclick="sendSuggestion('¿Es buena la dieta vegana para deportistas?')">Dieta vegana</button>
+            </div>
+            
+            <div class="chat-input-wrapper">
+                <input type="text" id="chatInput" class="chat-input" placeholder="Escribe tu pregunta aquí..." onkeypress="handleKeyPress(event)">
+                <button id="sendButton" class="send-button" onclick="sendMessage()">
+                    ➤
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendButton = document.getElementById('sendButton');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function sendSuggestion(text) {
+            chatInput.value = text;
+            sendMessage();
+        }
+
+        // Función para convertir markdown básico a HTML
+        function markdownToHtml(text) {
+            if (!text) return '';
+            
+            let html = text;
+            
+            // Convertir títulos (### a h3)
+            html = html.replace(/### (.*?)(?=\n|$)/g, '<h3>$1</h3>');
+            html = html.replace(/## (.*?)(?=\n|$)/g, '<h2>$1</h2>');
+            html = html.replace(/# (.*?)(?=\n|$)/g, '<h1>$1</h1>');
+            
+            // Convertir negritas (**texto** a <strong>texto</strong>)
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Convertir listas numeradas (1. texto a <li>texto</li>)
+            html = html.replace(/^\d+\.\s+(.*?)(?=\n\d+\.|$)/gm, '<li>$1</li>');
+            
+            // Convertir listas con guiones (- texto a <li>texto</li>)
+            html = html.replace(/^-\s+(.*?)(?=\n-|$)/gm, '<li>$1</li>');
+            
+            // Envolver listas en <ul> o <ol>
+            html = html.replace(/(<li>.*?<\/li>)/gs, function(match) {
+                // Si hay números al inicio, usar <ol>
+                if (match.match(/^\d+\./)) {
+                    return '<ol>' + match + '</ol>';
+                } else {
+                    return '<ul>' + match + '</ul>';
+                }
+            });
+            
+            // Convertir saltos de línea simples a <br>
+            html = html.replace(/\n/g, '<br>');
+            
+            // Limpiar múltiples <br> consecutivos
+            html = html.replace(/(<br>){3,}/g, '<br><br>');
+            
+            // Convertir enlaces [texto](url) a <a href="url">texto</a>
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            
+            return html;
+        }
+
+        function addMessage(content, isUser = false, timestamp = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            const time = timestamp || new Date().toLocaleTimeString('es-ES', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            // Convertir markdown a HTML solo para mensajes del bot
+            const formattedContent = isUser ? content : markdownToHtml(content);
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    ${formattedContent}
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTyping() {
+            typingIndicator.style.display = 'block';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTyping() {
+            typingIndicator.style.display = 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            chatMessages.appendChild(errorDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Deshabilitar input y botón
+            chatInput.disabled = true;
+            sendButton.disabled = true;
+
+            // Agregar mensaje del usuario
+            addMessage(message, true);
+            chatInput.value = '';
+
+            // Mostrar indicador de escritura
+            showTyping();
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                const data = await response.json();
+
+                hideTyping();
+
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    addMessage(data.response, false, data.timestamp);
+                }
+
+            } catch (error) {
+                hideTyping();
+                showError('Error de conexión. Por favor, intenta de nuevo.');
+                console.error('Error:', error);
+            } finally {
+                // Habilitar input y botón
+                chatInput.disabled = false;
+                sendButton.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        // Focus en el input al cargar
+        chatInput.focus();
+    </script>
+</body>
+</html> 
