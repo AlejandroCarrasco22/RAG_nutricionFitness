@@ -1,0 +1,14 @@
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+
+# Archivos de credenciales
+.env
+
+# Directorios de caché de Python
+__pycache__/
+.pytest_cache/
+
+# Otros
+.vscode/ 

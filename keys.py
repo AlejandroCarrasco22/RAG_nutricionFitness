@@ -1,10 +1,10 @@
 from langchain_openai import AzureChatOpenAI
 from langchain_openai import AzureOpenAIEmbeddings
 
-ENDPOINT = "https://aleja-mavdk5nu-eastus2.cognitiveservices.azure.com/"
-MODEL_NAME = "gpt-4o-mini"
-DEPLOYMENT = "gpt-4o-mini"
-SUBSCRIPTION_KEY = 'D55vuDUYoqo7Bzj9R0SwUhQFA8MZ9l2Eh5yWCOfKSlMXLmKw7JBpJQQJ99BEACHYHv6XJ3w3AAAAACOGRJuO'
+ENDPOINT = "***" # Azure OpenAI endpoint Sustituir por la URL de tu cuenta de Azure OpenAI
+MODEL_NAME = "gpt-4o"
+DEPLOYMENT = "gpt-4o"
+SUBSCRIPTION_KEY = '***' # Sustituir por la clave de tu cuenta de Azure OpenAI
 API_VERSION = "2024-12-01-preview"
 
 
