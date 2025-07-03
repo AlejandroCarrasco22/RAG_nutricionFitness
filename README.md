@@ -143,18 +143,6 @@ La interfaz se adapta automáticamente a:
 
 Presiona `Ctrl+C` en la terminal donde ejecutaste `main.py`.
 
-## 🤝 Contribuir
-
-1. Fork el proyecto
-2. Crea una rama para tu feature
-3. Commit tus cambios
-4. Push a la rama
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT.
-
 ---
 
 **¡Disfruta usando NutriBot para mejorar tu nutrición y fitness! 💪🥗** 
