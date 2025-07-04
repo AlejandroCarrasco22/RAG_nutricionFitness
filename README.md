@@ -34,12 +34,18 @@ Un chatbot inteligente especializado en nutrición, suplementación deportiva y 
    cd RAG_implementation
    ```
 
+
 2. **Instalar dependencias**:
+   Preferiblemente en un entorno .venv.
+   ```bash
+   pyhton -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Configurar claves API**:
+4. **Configurar claves API**:
    - Edita el archivo `keys.py` con tus claves de API necesarias
    - Asegúrate de tener configurado el LLM y embeddings
 
